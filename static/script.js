@@ -1,140 +1,231 @@
-// Credit Risk Ledger — front end logic
-// Talks to POST /predict, which returns:
-//   { default_probability, default_prediction, threshold, Result }
+const loanForm = document.getElementById("loanForm");
 
-const form = document.getElementById('risk-form');
-const submitBtn = document.getElementById('submit-btn');
-const formError = document.getElementById('form-error');
+const resetBtn = document.getElementById("resetBtn");
+const predictBtn = document.getElementById("predictBtn");
+const newAssessmentBtn = document.getElementById("newAssessmentBtn");
 
-const incomeInput = document.getElementById('person_income');
-const loanAmntInput = document.getElementById('loan_amnt');
-const percentIncomeInput = document.getElementById('loan_percent_income');
+const loading = document.getElementById("loading");
+const resultCard = document.getElementById("resultCard");
 
-const resultSection = document.getElementById('result-section');
-const probValueEl = document.getElementById('prob-value');
-const gaugeFill = document.getElementById('gauge-fill');
-const gaugeThreshold = document.getElementById('gauge-threshold');
-const thresholdLabel = document.getElementById('threshold-label');
-const verdictBox = document.getElementById('verdict');
-const verdictText = document.getElementById('verdict-text');
-const resultNote = document.getElementById('result-note');
+const riskResult = document.getElementById("riskResult");
+const probability = document.getElementById("probability");
+const threshold = document.getElementById("threshold");
 
-const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const incomeInput = document.getElementById("person_income");
+const loanInput = document.getElementById("loan_amnt");
+const ratioInput = document.getElementById("loan_percent_income");
 
-document.getElementById('scroll-to-form').addEventListener('click', () => {
-  document.getElementById('form-section').scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth' });
-});
+function calculateLoanIncomeRatio() {
+    const income = parseFloat(incomeInput.value);
+    const loan = parseFloat(loanInput.value);
 
-// --- Auto-calculate "loan as % of income" from the two figures that define it ---
-function updatePercentIncome() {
-  const income = parseFloat(incomeInput.value);
-  const amount = parseFloat(loanAmntInput.value);
-  if (income > 0 && amount >= 0) {
-    const pct = amount / income;
-    percentIncomeInput.value = pct.toFixed(3);
-  } else {
-    percentIncomeInput.value = '';
-  }
-}
-incomeInput.addEventListener('input', updatePercentIncome);
-loanAmntInput.addEventListener('input', updatePercentIncome);
-
-// --- Count-up animation for the headline number ---
-function animateNumber(el, toValue, duration = 700) {
-  if (prefersReducedMotion) {
-    el.textContent = toValue.toFixed(1);
-    return;
-  }
-  const start = performance.now();
-  function tick(now) {
-    const progress = Math.min((now - start) / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    el.textContent = (toValue * eased).toFixed(1);
-    if (progress < 1) requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
+    if (income > 0 && loan > 0) {
+        ratioInput.value = (loan / income).toFixed(2);
+    } else {
+        ratioInput.value = "";
+    }
 }
 
-function setLoading(isLoading) {
-  submitBtn.disabled = isLoading;
-  submitBtn.textContent = isLoading ? 'Assessing…' : 'Assess risk';
-}
+incomeInput.addEventListener("input", calculateLoanIncomeRatio);
+loanInput.addEventListener("input", calculateLoanIncomeRatio);
 
-function showError(message) {
-  formError.textContent = message;
-}
+function getNumberValue(id) {
+    const value = document.getElementById(id).value.trim();
 
-form.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  showError('');
-
-  if (!form.checkValidity()) {
-    form.reportValidity();
-    return;
-  }
-
-  const payload = {
-    person_age: parseInt(document.getElementById('person_age').value, 10),
-    person_income: parseFloat(incomeInput.value),
-    person_home_ownership: document.getElementById('person_home_ownership').value,
-    person_emp_length: parseFloat(document.getElementById('person_emp_length').value),
-    loan_intent: document.getElementById('loan_intent').value,
-    loan_grade: document.getElementById('loan_grade').value,
-    loan_amnt: parseFloat(loanAmntInput.value),
-    loan_int_rate: parseFloat(document.getElementById('loan_int_rate').value),
-    loan_percent_income: parseFloat(percentIncomeInput.value),
-    cb_person_default_on_file: document.getElementById('cb_person_default_on_file').value,
-    cb_person_cred_hist_length: parseInt(document.getElementById('cb_person_cred_hist_length').value, 10),
-  };
-
-  setLoading(true);
-
-  try {
-    const response = await fetch('/predict', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const detail = await response.text();
-      throw new Error(`Server responded ${response.status}: ${detail}`);
+    if (value === "") {
+        return null;
     }
 
-    const data = await response.json();
-    renderResult(data);
-  } catch (err) {
-    showError(`Couldn't reach the model: ${err.message}`);
-  } finally {
-    setLoading(false);
-  }
+    return Number(value);
+}
+
+
+function getStringValue(id) {
+    return document.getElementById(id).value;
+}
+
+
+loanForm.addEventListener("submit", async function (event) {
+
+    event.preventDefault();
+
+    const payload = {
+
+        person_age: getNumberValue("person_age"),
+
+        person_income: getNumberValue("person_income"),
+
+        person_emp_length: getNumberValue("person_emp_length"),
+
+        person_home_ownership:
+            getStringValue("person_home_ownership"),
+
+        loan_intent:
+            getStringValue("loan_intent"),
+
+        loan_grade:
+            getStringValue("loan_grade"),
+
+        loan_amnt:
+            getNumberValue("loan_amnt"),
+
+        loan_int_rate:
+            getNumberValue("loan_int_rate"),
+
+        loan_percent_income:
+            getNumberValue("loan_percent_income"),
+
+        cb_person_default_on_file:
+            getStringValue("cb_person_default_on_file"),
+
+        cb_person_cred_hist_length:
+            getNumberValue("cb_person_cred_hist_length")
+    };
+
+
+
+
+    predictBtn.disabled = true;
+    predictBtn.textContent = "Analyzing...";
+
+    loading.classList.remove("hidden");
+    resultCard.classList.add("hidden");
+
+
+    try {
+
+        const response = await fetch("/predict", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify(payload)
+        });
+
+
+        const data = await response.json();
+
+
+       
+
+        if (!response.ok) {
+
+            let errorMessage = "Prediction failed.";
+
+            if (data.detail) {
+
+                if (Array.isArray(data.detail)) {
+
+                    errorMessage = data.detail
+                        .map(error => error.msg)
+                        .join("\n");
+
+                } else {
+
+                    errorMessage = data.detail;
+                }
+            }
+
+            throw new Error(errorMessage);
+        }
+
+
+
+        const isHighRisk = data.default_prediction === 1;
+
+        riskResult.textContent = data.Result;
+
+        probability.textContent =
+            `${(data.default_probability * 100).toFixed(2)}%`;
+
+        threshold.textContent =
+            `${(data.threshold * 100).toFixed(2)}%`;
+
+
+  
+
+        riskResult.classList.remove(
+            "risk-low",
+            "risk-high"
+        );
+
+
+    
+
+        if (isHighRisk) {
+
+            riskResult.classList.add("risk-high");
+
+        } else {
+
+            riskResult.classList.add("risk-low");
+        }
+
+
+        resultCard.classList.remove("hidden");
+
+    
+        resultCard.scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+
+    }
+
+
+    catch (error) {
+
+        alert(error.message);
+
+    }
+
+
+    finally {
+
+        loading.classList.add("hidden");
+
+        predictBtn.disabled = false;
+
+        predictBtn.textContent = "Assess Credit Risk";
+    }
+
 });
 
-function renderResult(data) {
-  const probabilityPct = data.default_probability * 100;
-  const thresholdPct = data.threshold * 100;
-  const isHighRisk = data.default_prediction === 1;
 
-  resultSection.hidden = false;
 
-  animateNumber(probValueEl, probabilityPct);
 
-  requestAnimationFrame(() => {
-    gaugeFill.style.width = `${probabilityPct}%`;
-    gaugeFill.style.background = isHighRisk ? 'var(--risk-high)' : 'var(--risk-low)';
-    gaugeThreshold.style.left = `${thresholdPct}%`;
-  });
+resetBtn.addEventListener("click", function () {
 
-  thresholdLabel.textContent = `threshold ${thresholdPct.toFixed(0)}`;
+    loanForm.reset();
 
-  verdictBox.classList.remove('low', 'high');
-  verdictBox.classList.add(isHighRisk ? 'high' : 'low');
-  verdictText.textContent = data.Result;
+    resultCard.classList.add("hidden");
 
-  const distance = Math.abs(probabilityPct - thresholdPct).toFixed(1);
-  resultNote.textContent = isHighRisk
-    ? `This reading sits ${distance} points above the threshold of ${thresholdPct.toFixed(0)}%, which is what tips the entry into "High Risk."`
-    : `This reading sits ${distance} points below the threshold of ${thresholdPct.toFixed(0)}%, which is what keeps the entry at "Low Risk."`;
+    riskResult.classList.remove(
+        "risk-low",
+        "risk-high"
+    );
 
-  resultSection.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start' });
-}
+});
+
+
+
+newAssessmentBtn.addEventListener("click", function () {
+
+    loanForm.reset();
+
+    resultCard.classList.add("hidden");
+
+    riskResult.classList.remove(
+        "risk-low",
+        "risk-high"
+    );
+
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+
+});
