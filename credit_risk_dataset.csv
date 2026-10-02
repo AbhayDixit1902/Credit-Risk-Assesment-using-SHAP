@@ -32580,3 +32580,4 @@ person_age,person_income,person_home_ownership,person_emp_length,loan_intent,loa
 65,76000,RENT,3.0,HOMEIMPROVEMENT,B,35000,10.99,1,0.46,N,28
 56,150000,MORTGAGE,5.0,PERSONAL,B,15000,11.48,0,0.1,N,26
 66,42000,RENT,2.0,MEDICAL,B,6475,9.99,0,0.15,N,30
+     

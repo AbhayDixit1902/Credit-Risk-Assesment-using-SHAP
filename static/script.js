@@ -11,6 +11,7 @@ const riskResult = document.getElementById("riskResult");
 const probability = document.getElementById("probability");
 const threshold = document.getElementById("threshold");
 
+
 const incomeInput = document.getElementById("person_income");
 const loanInput = document.getElementById("loan_amnt");
 const ratioInput = document.getElementById("loan_percent_income");

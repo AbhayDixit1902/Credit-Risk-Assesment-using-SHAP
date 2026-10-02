@@ -78,7 +78,7 @@ def predict(data: LoanApplication):
     
     input_df = pd.DataFrame([record])[FEATURE_ORDER].fillna(value=np.nan)
 
-    try:
+    try: 
         probability = float(ml_model['model'].predict_proba(input_df)[:, 1][0])
     except Exception as e:
         raise HTTPException(status_code=500, detail=f'Prediction failed: {e}')

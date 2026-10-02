@@ -209,6 +209,8 @@ body {
     color: #991b1b;
 }
 
+
+
 .result-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
